@@ -8,12 +8,15 @@ services:
       - http.host=0.0.0.0
       - transport.host=127.0.0.1
       - xpack.security.enabled=false
+      - ES_PLUGINS_INSTALL=analysis-icu
     ports:
       - "9200:9200"
     networks:
       - elastic
     volumes:
       - hunspell-volume:/usr/share/elasticsearch/config/hunspell/
+    #  - ./kubernetes/entrypoint.sh:/entrypoint.sh
+    #entrypoint: /entrypoint.sh
 
   hunspell:
     image: insekticid/elasticsearch-hunspell
@@ -24,7 +27,7 @@ services:
       - elastic
     volumes:
       - hunspell-volume:/usr/share/elasticsearch/config/hunspell/
-    entrypoint: sh  
+    entrypoint: sh
 
   kibana:
     image: docker.elastic.co/kibana/kibana:6.8.3

@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elasticsearchs
+---
+apiVersion: v1
+data:
+  entrypoint.sh: "#!/usr/bin/env bash\n\n#https://github.com/wodby/elasticsearch/blob/master/bin/docker-entrypoint.sh\n\nset
+    -e\n\nif [[ -n \"${DEBUG}\" ]]; then\n    set -x\nfi\n\ninstall_plugins() {\n
+    \   if [[ -n \"${ES_PLUGINS_INSTALL}\" ]]; then\n       IFS=',' read -r -a plugins
+    <<< \"${ES_PLUGINS_INSTALL}\"\n       for plugin in \"${plugins[@]}\"; do\n          if
+    ! elasticsearch-plugin list | grep -qs \"${plugin}\"; then\n             yes |
+    elasticsearch-plugin install --batch \"${plugin}\"\n          fi\n       done\n
+    \   fi\n}\n\n# The virtual file /proc/self/cgroup should list the current cgroup\n#
+    membership. For each hierarchy, you can follow the cgroup path from\n# this file
+    to the cgroup filesystem (usually /sys/fs/cgroup/) and\n# introspect the statistics
+    for the cgroup for the given\n# hierarchy. Alas, Docker breaks this by mounting
+    the container\n# statistics at the root while leaving the cgroup paths as the
+    actual\n# paths. Therefore, Elasticsearch provides a mechanism to override\n#
+    reading the cgroup path from /proc/self/cgroup and instead uses the\n# cgroup
+    path defined the JVM system property\n# es.cgroups.hierarchy.override. Therefore,
+    we set this value here so\n# that cgroup statistics are available for the container
+    this process\n# will run in.\nexport ES_JAVA_OPTS=\"-Des.cgroups.hierarchy.override=/
+    $ES_JAVA_OPTS\"\n\n# Generate random node name if not set.\nif [[ -z \"${ES_NODE_NAME}\"
+    ]]; then\n\texport ES_NODE_NAME=$(uuidgen)\nfi\n\n# Fix volume permissions.\nchown
+    -R elasticsearch:elasticsearch /usr/share/elasticsearch/data\n\ninstall_plugins\n\nexec
+    \"/usr/local/bin/docker-entrypoint.sh\""
+kind: ConfigMap
+metadata:
+  name: elasticsearch-entrypoint
+  namespace: elasticsearchs
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: elasticsearch-
+  labels:
+    statefulset.kubernetes.io/pod-name: elasticsearch-0
+  name: elasticsearch-0
+  namespace: elasticsearchs
+spec:
+  containers:
+  - command:
+    - /entrypoint.sh
+    env:
+    - name: ES_PLUGINS_INSTALL
+      value: analysis-icu
+    - name: http.host
+      value: 0.0.0.0
+    - name: transport.host
+      value: 127.0.0.1
+    - name: xpack.security.enabled
+      value: "false"
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.3
+    imagePullPolicy: Always
+    name: elasticsearch
+    volumeMounts:
+    - mountPath: /usr/share/elasticsearch/config/hunspell/
+      name: shared-data
+    - mountPath: /entrypoint.sh
+      name: entrypoint-vol
+      subPath: entrypoint.sh
+  initContainers:
+  - args:
+    - cp
+    - -R
+    - /usr/share/elasticsearch/config/hunspell/
+    - /data/
+    image: insekticid/elasticsearch-hunspell
+    imagePullPolicy: Always
+    name: hunspell
+    volumeMounts:
+    - mountPath: /data/hunspell/
+      name: shared-data
+  restartPolicy: Always
+  volumes:
+  - emptyDir: {}
+    name: shared-data
+  - configMap:
+      defaultMode: 511
+      name: elasticsearch-entrypoint
+      optional: true
+    name: entrypoint-vol
