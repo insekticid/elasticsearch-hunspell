@@ -35,13 +35,16 @@ RUN mkdir -p /usr/share/hunspell /usr/share/elasticsearch/config/hunspell \
        # 3) convert also .dic file to UTF-8
        # 4) cleanup
        # ----------------------------------
-       iconv -f ISO-8859-2 -t UTF-8 ${name}/${name}.aff > ${name}/${name}.aff.utf8; \
-       sed "1s/ISO8859-2/UTF-8/" ${name}/${name}.aff.utf8 > ${name}/${name}.aff.utf8.1; \
-       sed "2119s/$/áéíóúýuerl\]nout/" ${name}/${name}.aff.utf8.1 > ${name}/${name}.aff.utf8; \
-       iconv -f ISO-8859-2 -t UTF-8 ${name}/${name}.dic > ${name}/${name}.dic.utf8; \
-       rm ${name}/${name}.aff.utf8.1; \
-       mv ${name}/${name}.aff.utf8 ${name}/${name}.aff; \
-       mv ${name}/${name}.dic.utf8 ${name}/${name}.dic; \
+       if [ "${name}" = "cs_CZ" ]; then \
+         echo "converting ${name} to UTF-8"; \
+         iconv -f ISO-8859-2 -t UTF-8 ${name}/${name}.aff > ${name}/${name}.aff.utf8; \
+         sed "1s/ISO8859-2/UTF-8/" ${name}/${name}.aff.utf8 > ${name}/${name}.aff.utf8.1; \
+         sed "2119s/$/áéíóúýuerl\]nout/" ${name}/${name}.aff.utf8.1 > ${name}/${name}.aff.utf8; \
+         iconv -f ISO-8859-2 -t UTF-8 ${name}/${name}.dic > ${name}/${name}.dic.utf8; \
+         rm ${name}/${name}.aff.utf8.1; \
+         mv ${name}/${name}.aff.utf8 ${name}/${name}.aff; \
+         mv ${name}/${name}.dic.utf8 ${name}/${name}.dic; \
+       fi \
      done
 
 RUN ln -s /usr/share/elasticsearch/config/hunspell/cs_CZ/cs_CZ.aff /usr/share/hunspell/default.aff \
